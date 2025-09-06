@@ -1,0 +1,3 @@
+policy: normal
+log_path: data/logs
+poisoned_site_path: poisoned_site/index.html

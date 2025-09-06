@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cranium-ai-agent-redteam"
+version = "0.1.0"
+description = "Multi-agent indirect prompt injection red-team demo"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "beautifulsoup4",
+  "pyyaml",
+  "tqdm",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]   # finds your 'src' package (since you have src/__init__.py)
