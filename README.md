@@ -35,34 +35,20 @@ make run-attack    # strict policy: placeholder run (defenses wired later)
 
 ```mermaid
 flowchart LR
-  subgraph Ingestion
-    U[Untrusted Content<br/>(Web/Docs)]
-    L[Web Loader v0<br/>(fetch + strip HTML)]
-  end
-
-  subgraph Agents
-    R[Researcher<br/>normalize notes]
-    S[Summarizer<br/>intent JSON]
-  end
-
-  subgraph Defenses
-    TT[Trust tiers]
-    TG[Tool allowlist]
-    DC[Detector/Regex<br/>(+optional ML)]
-    CG[Consent gate]
-  end
-
-  subgraph Tools
-    E{{Email (mock)}}
-    C{{Calendar (mock)}}
-  end
-
-  subgraph Telemetry
-    T[JSONL / SQLite]
-  end
+  U[Untrusted content (web/docs)]
+  L[Web loader v0 (fetch + strip HTML)]
+  R[Researcher — normalize notes]
+  S[Summarizer — intent JSON]
+  TT[Trust tiers]
+  TG[Tool allowlist]
+  DC[Detector]
+  CG[Consent gate]
+  E[(Email — mock)]
+  C[(Calendar — mock)]
+  T[(Telemetry: JSONL / SQLite)]
 
   U --> L --> R --> S
-  S -->|intent| TG --> CG --> E
+  S --> TG --> CG --> E
   S -.-> DC
   R --> T
   S --> T
@@ -70,4 +56,4 @@ flowchart LR
   CG --> T
   DC --> T
   E --> T
-  ```
+```
