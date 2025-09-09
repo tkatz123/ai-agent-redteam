@@ -33,27 +33,8 @@ make run-attack    # strict policy: placeholder run (defenses wired later)
 
 ## Architecture
 
-```mermaid
-flowchart LR
-  U[Untrusted content (web/docs)]
-  L[Web loader v0 (fetch + strip HTML)]
-  R[Researcher — normalize notes]
-  S[Summarizer — intent JSON]
-  TT[Trust tiers]
-  TG[Tool allowlist]
-  DC[Detector]
-  CG[Consent gate]
-  E[(Email — mock)]
-  C[(Calendar — mock)]
-  T[(Telemetry: JSONL / SQLite)]
-
-  U --> L --> R --> S
-  S --> TG --> CG --> E
-  S -.-> DC
-  R --> T
-  S --> T
-  TG --> T
-  CG --> T
-  DC --> T
-  E --> T
-```
+Untrusted web/docs -> [Web loader v0] -> [Researcher] -> [Summarizer]
+                      -> (Defenses: trust tiers, allowlist, detector, consent)
+                      -> [Tools: Email/Calendar]
+                      
+All steps -> Telemetry (JSONL/SQLite)
