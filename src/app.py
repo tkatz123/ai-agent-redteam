@@ -1,33 +1,44 @@
+# src/app.py
 import argparse, json, os
-from datetime import datetime
+from datetime import datetime, timezone
+from src.utils.config import load_settings
+from src.telemetry import Telemetry
 
-#Specifies where logs are kepy
-RUN_DIR = "data/logs"
+def _make_run_id(prefix: str = "run") -> str:
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{prefix}-{ts}-{os.urandom(3).hex()}"  # small random suffix to avoid collisions
 
 def main():
-
-    #Creates command line parser object
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["clean", "attack"], default="clean")
-    parser.add_argument("--policy", choices=["normal", "strict"], default="normal")
+    parser.add_argument("--policy", choices=["normal", "strict"], default=None, help="override config policy")
     args = parser.parse_args()
 
-    #Ensures log directory already exists
-    os.makedirs(RUN_DIR, exist_ok=True)
-    run_id = f"run-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    cfg = load_settings()
 
-    #Creates JSON record
+    # CLI `--policy` overrides YAML/.env if provided
+    effective_policy = args.policy if args.policy else cfg.policy
+
+    run_id = _make_run_id("run")
+    tel = Telemetry(
+        run_id=run_id,
+        log_dir=cfg.log_path,
+        sqlite_enabled=cfg.telemetry_sqlite,
+        sqlite_path=cfg.sqlite_path,
+    )
+
+    tel.log_meta({"mode": args.mode, "policy": effective_policy})
+
+    # Day-2 placeholder business logic
     record = {
         "run_id": run_id,
         "mode": args.mode,
-        "policy": args.policy,
-        "message": "Day-1 sanity check: pipeline placeholder executed."
+        "policy": effective_policy,
+        "message": "Day-2 sanity check with config + telemetry (jsonl + optional sqlite)."
     }
+    tel.log_step("placeholder", record)
 
-    #Writes JSON records
-    with open(os.path.join(RUN_DIR, f"{run_id}.jsonl"), "w", encoding="utf-8") as f:
-        f.write(json.dumps(record) + "\n")
-
+    tel.finish(success=True)
     print(f"[OK] {record}")
 
 if __name__ == "__main__":

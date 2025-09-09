@@ -1,3 +1,7 @@
 policy: normal
 log_path: data/logs
 poisoned_site_path: poisoned_site/index.html
+
+# optional defaults; env can override
+telemetry_sqlite: false
+sqlite_path: data/logs/telemetry.sqlite3
