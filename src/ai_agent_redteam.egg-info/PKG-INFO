@@ -10,6 +10,7 @@ Requires-Dist: pyyaml
 Requires-Dist: tqdm
 Requires-Dist: pyyaml
 Requires-Dist: python-dotenv
+Requires-Dist: requests
 Dynamic: license-file
 
 # ai-agent-redteam

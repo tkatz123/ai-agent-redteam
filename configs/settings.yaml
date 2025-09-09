@@ -5,3 +5,9 @@ poisoned_site_path: poisoned_site/index.html
 # optional defaults; env can override
 telemetry_sqlite: false
 sqlite_path: data/logs/telemetry.sqlite3
+
+# Loader tuning
+user_agent: "Agent/0.1 (+local)"
+http_timeout: 10        # seconds
+max_fetch_bytes: 2000000  # 2 MB guardrail
+read_hidden_content: false

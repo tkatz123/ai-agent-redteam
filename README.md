@@ -29,3 +29,45 @@ Modern AI assistants ingest untrusted content (web, docs, calendar). A single po
 ```bash
 make run-clean     # baseline: writes a log file
 make run-attack    # strict policy: placeholder run (defenses wired later)
+```
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Ingestion
+    U[Untrusted Content<br/>(Web/Docs)]
+    L[Web Loader v0<br/>(fetch + strip HTML)]
+  end
+
+  subgraph Agents
+    R[Researcher<br/>normalize notes]
+    S[Summarizer<br/>intent JSON]
+  end
+
+  subgraph Defenses
+    TT[Trust tiers]
+    TG[Tool allowlist]
+    DC[Detector/Regex<br/>(+optional ML)]
+    CG[Consent gate]
+  end
+
+  subgraph Tools
+    E{{Email (mock)}}
+    C{{Calendar (mock)}}
+  end
+
+  subgraph Telemetry
+    T[JSONL / SQLite]
+  end
+
+  U --> L --> R --> S
+  S -->|intent| TG --> CG --> E
+  S -.-> DC
+  R --> T
+  S --> T
+  TG --> T
+  CG --> T
+  DC --> T
+  E --> T
+  ```
