@@ -103,4 +103,6 @@ PY
 esac
 
 echo "[OK] Wrote poisoned_site/index.html (variant=${VARIANT})"
-[ -f poisoned_site/notes.md ] && echo "[OK] Wrote poisoned_site/notes.md"
+if [ -f poisoned_site/notes.md ]; then
+  echo "[OK] Wrote poisoned_site/notes.md"
+fi

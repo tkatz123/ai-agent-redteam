@@ -36,8 +36,10 @@ def run_pipeline(mode: str, policy: str, cfg, tel, force_tool: Optional[str] = N
     notes = researcher.ingest(visible, comments, hidden, trust=trust)
 
     # 3) Summarizer → intent
-    summarizer = Summarizer(tel)  # when you add a real LLM, pass llm=get_llm()
-    intent = summarizer.propose_action(notes, trust=trust)
+    allow_override = (policy == "normal")  # baseline vulnerable in normal
+    intent = Summarizer(tel).propose_action(notes, trust=trust, allow_untrusted_override=allow_override)
+
+    
 
     # Optional tool override for testing
     tool = (force_tool or "").strip().lower()

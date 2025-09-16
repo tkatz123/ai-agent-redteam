@@ -31,3 +31,23 @@ attack-css:         poison-css       run-attack
 attack-zwc:         poison-zwc       run-attack
 attack-datauri:     poison-datauri   run-attack
 attack-multipage:   poison-multipage run-attack
+
+# --- ASR harness (single-run) ---
+# Defaults (can be overridden on the CLI)
+variant ?= comment
+policy  ?= normal
+mode    ?= attack
+tool    ?= auto
+
+.PHONY: eval-once eval-clean eval-comment eval-css eval-zwc eval-datauri
+
+# Generic, param-driven run:
+eval-once:
+	$(PY) -m src.eval.asr_harness --variant=$(variant) --policy=$(policy) --mode=$(mode) --tool=$(tool)
+
+# Convenience shortcuts:
+eval-clean:     ; $(PY) -m src.eval.asr_harness --variant clean    --policy $(policy) --mode $(mode) --tool $(tool)
+eval-comment:   ; $(PY) -m src.eval.asr_harness --variant comment  --policy $(policy) --mode $(mode) --tool $(tool)
+eval-css:       ; $(PY) -m src.eval.asr_harness --variant css      --policy $(policy) --mode $(mode) --tool $(tool)
+eval-zwc:       ; $(PY) -m src.eval.asr_harness --variant zwc      --policy $(policy) --mode $(mode) --tool $(tool)
+eval-datauri:   ; $(PY) -m src.eval.asr_harness --variant datauri  --policy $(policy) --mode $(mode) --tool $(tool)

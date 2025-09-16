@@ -66,7 +66,7 @@ def extract_text(html: str, include_hidden: bool = False) -> Tuple[str, str, str
     # Hidden text (guarded)
     hidden_text = ""
     if include_hidden:
-        hidden_nodes = soup.select("[style*='display:none'], [hidden], [aria-hidden='true']")
+        hidden_nodes = soup.select( "[style*='display:none'], [hidden], [aria-hidden='true'], [style*='left:-'], [style*='position:absolute']")
         hidden_pieces = []
         for el in hidden_nodes:
             txt = el.get_text(" ", strip=True)
