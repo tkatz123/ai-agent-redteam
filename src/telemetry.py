@@ -1,5 +1,7 @@
 # src/telemetry.py
-import json, os, uuid, sqlite3
+from __future__ import annotations
+
+import json, os, uuid, sqlite3, re
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
@@ -7,6 +9,30 @@ ISO = "%Y-%m-%dT%H:%M:%S.%fZ"
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).strftime(ISO)
+
+# -------------------------
+# Redaction (Step 5, hardened logs)
+#   - Masks common secret/token patterns in ANY logged string
+#   - Recurses into dicts/lists so nested payloads are scrubbed
+# -------------------------
+_RE_SECRET = re.compile(
+    r"("                       # begin group
+    r"\$\{?API_KEY\}?|"        # ${API_KEY} or $API_KEY
+    r"Bearer\s+[A-Za-z0-9\-\._~\+\/]+=*|"  # Bearer <token>
+    r"\btoken=[A-Za-z0-9\-_]+" # token=xxxx
+    r")",
+    re.IGNORECASE,
+)
+
+def _redact(x: Any) -> Any:
+    if isinstance(x, str):
+        return _RE_SECRET.sub("[REDACTED]", x)
+    if isinstance(x, dict):
+        return {k: _redact(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_redact(v) for v in x]
+    return x
+
 
 class Telemetry:
     """
@@ -31,7 +57,7 @@ class Telemetry:
         if self.sqlite_enabled:
             self._ensure_sqlite()
 
-        # Helpful: mark the start of the run
+        # Mark the start of the run
         self.log_meta({"event": "run_start"})
 
     # -------- public API --------
@@ -48,21 +74,26 @@ class Telemetry:
 
     # -------- internals --------
     def _log(self, kind: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        # Build raw record
         rec = {
             "_id": str(uuid.uuid4()),
             "run_id": self.run_id,
             "ts": _utc_now_iso(),
             "type": kind,
-            **payload,
+            **(payload or {}),
         }
+        # Redact before persisting anywhere
+        safe = _redact(rec)
+
         # JSONL
         with open(self.path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            f.write(json.dumps(safe, ensure_ascii=False) + "\n")
 
-        # SQLite mirror
+        # SQLite mirror (store the redacted payload)
         if self.sqlite_enabled:
-            self._insert_sqlite(rec)
-        return rec
+            self._insert_sqlite(safe)
+
+        return safe
 
     def _ensure_sqlite(self) -> None:
         os.makedirs(os.path.dirname(self.sqlite_path), exist_ok=True)
@@ -84,7 +115,7 @@ class Telemetry:
         payload = json.dumps(rec, ensure_ascii=False)
         self._conn.execute(
             "INSERT OR REPLACE INTO events (id, run_id, ts, type, payload) VALUES (?, ?, ?, ?, ?)",
-            (rec["_id"], rec["run_id"], rec["ts"], rec["type"], payload),
+            (rec.get("_id"), rec.get("run_id"), rec.get("ts"), rec.get("type"), payload),
         )
         self._conn.commit()
 

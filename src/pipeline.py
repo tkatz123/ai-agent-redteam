@@ -6,6 +6,17 @@ from src.agents.researcher import Researcher
 from src.agents.summarizer import Summarizer
 from src.agents.emailer import Emailer
 from src.agents.scheduler import Scheduler
+from src.utils.sanitize import sanitize_text
+import re
+_TOOL_EMAIL = re.compile(r"\b(send|draft)\s+email\b", re.I)
+_TOOL_SCHED = re.compile(r"\b(schedule|set up|book)\s+(a\s+)?(meeting|call)\b", re.I)
+
+def _infer_tool_from_notes(notes: str) -> str:
+    if _TOOL_SCHED.search(notes or ""):
+        return "schedule"
+    if _TOOL_EMAIL.search(notes or ""):
+        return "email"
+    return "email"  # default
 
 def _trust_labels(visible: str, comments: str, hidden: str) -> Dict[str, str]:
     trust = {}
@@ -35,12 +46,20 @@ def run_pipeline(mode: str, policy: str, cfg, tel, force_tool: Optional[str] = N
     trust = _trust_labels(visible, comments, hidden)
     notes = researcher.ingest(visible, comments, hidden, trust=trust)
 
+    # ---- Strict policy: sanitize notes before summarizing
+    if policy == "strict":
+        notes = sanitize_text(notes)
+
     # 3) Summarizer → intent
-    allow_override = (policy == "normal")  # baseline vulnerable in normal
-    intent = Summarizer(tel).propose_action(notes, trust=trust, allow_untrusted_override=allow_override)
+    summarizer = Summarizer(tel)
+    allow_override = (policy == "normal")   # baseline vulnerable only in normal
+    intent = summarizer.propose_action(notes, trust=trust, allow_untrusted_override=allow_override)
+
+    # ---- Strict policy: sanitize outgoing body as a last line of defense
+    if policy == "strict" and isinstance(intent.get("body"), str):
+        intent["body"] = sanitize_text(intent["body"])
 
     
-
     # Optional tool override for testing
     tool = (force_tool or "").strip().lower()
     if tool not in ("email", "schedule"):

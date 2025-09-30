@@ -2,6 +2,7 @@
 # Regenerate poisoned_site content.
 # Usage: bash scripts/seed_poison.sh [clean|comment|css|zwc|datauri|multipage]
 set -euo pipefail
+trap 'echo "[ERR] $0 failed at line $LINENO" >&2' ERR
 
 VARIANT="${1:-clean}"
 RECIP="${RECIP:-attacker@evil.test}"

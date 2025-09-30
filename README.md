@@ -38,3 +38,7 @@ Untrusted web/docs -> [Web loader v0] -> [Researcher] -> [Summarizer]
                       -> [Tools: Email/Calendar]
                       
 All steps -> Telemetry (JSONL/SQLite)
+
+## Reference Material
+
+See **[Threat Model](docs/threat_model.md)** for scope, assets, and attacker goals.

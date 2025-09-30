@@ -4,6 +4,18 @@ PY := ./.venv/bin/python
         poison-clean poison-comment poison-css poison-zwc poison-datauri poison-multipage \
         serve-poison attack-clean attack-comment attack-css attack-zwc attack-datauri attack-multipage
 
+.PHONY: eval-batch
+runs ?= 20
+variants ?= comment css zwc datauri
+eval-batch:
+	$(PY) -m src.eval.batch_runner --runs $(runs) --policy $(policy) --mode $(mode) --tool $(tool) --variants $(variants)
+# usage:
+# make eval-batch policy=normal mode=attack runs=50
+
+.PHONY: doctor
+doctor: ; bash scripts/doctor.sh
+
+
 venv:
 	python3.11 -m venv .venv && $(PY) -V
 
@@ -15,7 +27,7 @@ run-attack:
 
 # --- Poison site generators ---
 poison-clean:       ; scripts/seed_poison.sh clean
-poison-comment:     ; scripts/seed_poison.sh comment
+poison-comment:     ; bash scripts/seed_poison.sh comment
 poison-css:         ; scripts/seed_poison.sh css
 poison-zwc:         ; scripts/seed_poison.sh zwc
 poison-datauri:     ; scripts/seed_poison.sh datauri
