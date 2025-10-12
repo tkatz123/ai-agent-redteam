@@ -15,6 +15,17 @@ eval-batch:
 .PHONY: doctor
 doctor: ; bash scripts/doctor.sh
 
+.PHONY: poison-reply attack-reply eval-reply release-m1 report-m1
+
+poison-reply: ; bash scripts/seed_poison.sh reply
+attack-reply: poison-reply ; $(PY) -m src.app --mode attack --policy normal
+
+eval-reply: ; $(PY) -m src.eval.asr_harness --variant reply --policy normal --mode attack
+
+release-m1: ; bash scripts/release_m1.sh
+
+report-m1:
+	@echo "See docs/m1_report.md; run eval-batch and paste table."
 
 venv:
 	python3.11 -m venv .venv && $(PY) -V

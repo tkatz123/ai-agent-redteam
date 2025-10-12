@@ -1,6 +1,6 @@
 # src/tools/webloader.py
 from __future__ import annotations
-import os, re
+import os, re, base64, urllib.parse
 from typing import Tuple, Optional
 
 import requests
@@ -29,7 +29,6 @@ def fetch(path_or_url: str,
         r = requests.get(path_or_url, headers=headers, timeout=timeout)
         r.raise_for_status()
         raw = _clamp_bytes(r.content, max_bytes)
-        # decode with best-guess, never return None
         txt = raw.decode(r.apparent_encoding or "utf-8", errors="replace")
         return txt
 
@@ -42,6 +41,16 @@ def fetch(path_or_url: str,
         return raw.decode("utf-8")
     except UnicodeDecodeError:
         return raw.decode("latin-1", errors="replace")
+
+def _decode_data_uri(uri: str) -> str:
+    try:
+        header, payload = uri.split(",", 1)
+        is_base64 = ";base64" in header.lower()
+        if is_base64:
+            return base64.b64decode(payload).decode("utf-8", errors="replace")
+        return urllib.parse.unquote(payload)
+    except Exception:
+        return ""
 
 def extract_text(html: str, include_hidden: bool = False) -> Tuple[str, str, str]:
     """
@@ -64,7 +73,7 @@ def extract_text(html: str, include_hidden: bool = False) -> Tuple[str, str, str
 
     hidden_text = ""
     if include_hidden:
-        # include display:none, hidden attributes, aria-hidden, and off-screen abs-pos
+        # Hidden/off-screen elements
         hidden_nodes = soup.select(
             "[style*='display:none'], [hidden], [aria-hidden='true'], "
             "[style*='left:-'], [style*='position:absolute']"
@@ -74,6 +83,18 @@ def extract_text(html: str, include_hidden: bool = False) -> Tuple[str, str, str
             txt = el.get_text(" ", strip=True)
             if txt:
                 hidden_pieces.append(txt)
+
+        # Also pull payloads embedded in data: URIs (href/src)
+        data_bits = []
+        for tag in soup.find_all(True):
+            for attr in ("href", "src"):
+                val = tag.get(attr)
+                if isinstance(val, str) and val.lower().startswith("data:"):
+                    text = _decode_data_uri(val)
+                    if text:
+                        data_bits.append(text)
+        hidden_pieces.extend(data_bits)
+
         hidden_text = " ".join(hidden_pieces)
 
     def _norm(s: str) -> str:
@@ -88,10 +109,43 @@ def load_page(path_or_url: str,
               max_bytes: Optional[int] = 2_000_000):
     """
     Convenience: fetch → extract. Returns (html, visible, comments, hidden).
-    Always returns a non-empty string for html (or raises).
     """
     html = fetch(path_or_url, user_agent=user_agent, timeout=timeout, max_bytes=max_bytes)
-    if not isinstance(html, str):
-        raise TypeError(f"fetch() returned non-str: {type(html)} for {path_or_url}")
     visible, comments, hidden = extract_text(html, include_hidden=include_hidden)
     return html, visible, comments, hidden
+
+def load_page_follow_one(path_or_url: str, include_hidden: bool = False,
+                         user_agent: str = "CraniumAgent/0.1 (+local)",
+                         timeout: int = 10, max_bytes: Optional[int] = 2_000_000):
+    """
+    Fetch main page, then follow a single same-dir relative link to .md/.html and merge its text.
+    Only follows local relative links in v0 (HTTP stays single-page).
+    """
+    html, vis, com, hid = load_page(path_or_url, include_hidden, user_agent, timeout, max_bytes)
+
+    # Only follow for local files
+    if _is_url(path_or_url):
+        return html, vis, com, hid
+
+    soup = BeautifulSoup(html, "html.parser")
+    basedir = os.path.dirname(path_or_url) or "."
+    rel = None
+    for a in soup.find_all("a", href=True):
+        href = a["href"]
+        if href.startswith(("http://", "https://", "data:")):
+            continue
+        if href.endswith((".md", ".html", ".htm")):
+            rel = href
+            break
+    if not rel:
+        return html, vis, com, hid
+
+    target = os.path.normpath(os.path.join(basedir, rel))
+    if not os.path.exists(target):
+        return html, vis, com, hid
+
+    html2, vis2, com2, hid2 = load_page(target, include_hidden, user_agent, timeout, max_bytes)
+    merged_vis = " ".join([vis, vis2]).strip()
+    merged_com = "\n".join([c for c in (com, com2) if c]).strip()
+    merged_hid = " ".join([hid, hid2]).strip()
+    return html, merged_vis, merged_com, merged_hid

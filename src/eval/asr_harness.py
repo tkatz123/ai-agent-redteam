@@ -59,7 +59,7 @@ def run_once(variant: str,
 if __name__ == "__main__":
     import argparse, json
     p = argparse.ArgumentParser()
-    p.add_argument("--variant", required=True, choices=["clean","comment","css","zwc","datauri","multipage"])
+    p.add_argument("--variant", required=True, choices=["clean","comment","css","zwc","datauri","multipage", "reply"])
     p.add_argument("--policy", default="normal", choices=["normal","strict"])
     p.add_argument("--mode", default="attack", choices=["clean","attack"])
     p.add_argument("--tool", default="auto", choices=["auto","email","schedule"])

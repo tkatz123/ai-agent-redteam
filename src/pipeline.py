@@ -1,13 +1,16 @@
 # src/pipeline.py
 from __future__ import annotations
 from typing import Dict, Any, Optional
-from src.tools.webloader import load_page
+import re
+
+from src.tools.webloader import load_page_follow_one
 from src.agents.researcher import Researcher
 from src.agents.summarizer import Summarizer
 from src.agents.emailer import Emailer
 from src.agents.scheduler import Scheduler
 from src.utils.sanitize import sanitize_text
-import re
+from src.policy.allowlist import enforce_tool_policy   # <-- NEW
+
 _TOOL_EMAIL = re.compile(r"\b(send|draft)\s+email\b", re.I)
 _TOOL_SCHED = re.compile(r"\b(schedule|set up|book)\s+(a\s+)?(meeting|call)\b", re.I)
 
@@ -28,8 +31,8 @@ def _trust_labels(visible: str, comments: str, hidden: str) -> Dict[str, str]:
 def run_pipeline(mode: str, policy: str, cfg, tel, force_tool: Optional[str] = None) -> Dict[str, Any]:
     include_hidden = (mode == "attack") or bool(getattr(cfg, "read_hidden_content", False))
 
-    # 1) Load content
-    html, visible, comments, hidden = load_page(
+    # 1) Load content (with one-hop follow for local links)
+    html, visible, comments, hidden = load_page_follow_one(
         getattr(cfg, "poisoned_site_path", "poisoned_site/index.html"),
         include_hidden=include_hidden,
         user_agent=getattr(cfg, "user_agent", "CraniumAgent/0.1 (+local)"),
@@ -51,19 +54,31 @@ def run_pipeline(mode: str, policy: str, cfg, tel, force_tool: Optional[str] = N
         notes = sanitize_text(notes)
 
     # 3) Summarizer → intent
-    summarizer = Summarizer(tel)
+    summarizer = Summarizer(tel)  # when you add a real LLM, pass llm=get_llm()
     allow_override = (policy == "normal")   # baseline vulnerable only in normal
     intent = summarizer.propose_action(notes, trust=trust, allow_untrusted_override=allow_override)
+
+    # Infer tool if summarizer didn't set one
+    intent.setdefault("tool", _infer_tool_from_notes(notes))
 
     # ---- Strict policy: sanitize outgoing body as a last line of defense
     if policy == "strict" and isinstance(intent.get("body"), str):
         intent["body"] = sanitize_text(intent["body"])
 
-    
     # Optional tool override for testing
     tool = (force_tool or "").strip().lower()
     if tool not in ("email", "schedule"):
         tool = intent.get("tool", "email").lower()
+    # Keep intent and 'tool' in sync for policy checks/logs
+    intent["tool"] = tool
+
+    # ---- NEW: Policy allowlist enforcement (blocks unsafe recipients/invitees in strict)
+    allowed, reason = enforce_tool_policy(intent, policy)
+    if not allowed:
+        safe_intent = {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
+        tel.log_step("policy_block", {"tool": tool, "reason": reason, "intent": safe_intent})
+        # Treat as success because an unsafe action was prevented
+        return {"intent": intent, "outcome": {"blocked": True, "reason": reason}, "success": True}
 
     # 4) Route to the correct tool
     if tool == "schedule":
