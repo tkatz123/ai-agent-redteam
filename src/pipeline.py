@@ -14,6 +14,7 @@ from src.policy.consent import confirm_action
 from src.utils.output_filter import filter_intent
 from src.policy.profiles import get_profile
 from src.detect.regex_detector import score as rx_score
+from src.utils.schema import validate_intent
 
 _TOOL_EMAIL = re.compile(r"\b(send|draft)\s+email\b", re.I)
 _TOOL_SCHED = re.compile(r"\b(schedule|set up|book)\s+(a\s+)?(meeting|call)\b", re.I)
@@ -103,6 +104,11 @@ def run_pipeline(mode: str, policy: str, cfg, tel, force_tool: Optional[str] = N
     if tool not in ("email", "schedule"):
         tool = intent.get("tool", "email").lower()
     intent["tool"] = tool  # keep in sync for policy checks/logs
+
+    ok_schema, why_schema = validate_intent(intent)
+    if not ok_schema:
+        tel.log_step("schema_block", {"tool": tool, "reason": why_schema})
+        return {"intent": intent, "outcome": {"blocked": True, "reason": why_schema}, "success": True}
 
     # Profile: allowlist enforcement (gate unsafe recipients/invitees)
     if prof.allowlist:

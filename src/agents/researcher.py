@@ -48,11 +48,11 @@ class Researcher(Agent):
         # Compose notes with provenance headers + trust tiers
         parts = []
         if v:
-            parts.append(f"## SOURCE: WEB_VISIBLE [{_tier(trust, 'visible')}]\n{v}")
+            parts.append("<<<UNTRUSTED:VISIBLE>>>\n" + v + "\n<<<END>>>")
         if c:
-            parts.append(f"## SOURCE: WEB_COMMENTS [{_tier(trust, 'comments')}]\n{c}")
+            parts.append("<<<UNTRUSTED:COMMENTS>>>\n" + c + "\n<<<END>>>")
         if h:
-            parts.append(f"## SOURCE: WEB_HIDDEN [{_tier(trust, 'hidden')}]\n{h}")
+            parts.append("<<<UNTRUSTED:HIDDEN>>>\n" + h + "\n<<<END>>>")
 
         notes = "\n\n".join(parts) if parts else ""
         notes, truncated = self.truncate(notes, max_chars=max_chars)

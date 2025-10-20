@@ -84,3 +84,17 @@ eval-roc:
 plot-asr:
 	$(PY) -m src.eval.plot_asr
 
+.PHONY: eval-5x300
+eval-5x300:
+	$(PY) -m src.eval.batch_runner --runs 60 --policy normal --mode attack --tool auto --variants comment css zwc reply multipage
+	CONSENT_MODE=always $(PY) -m src.eval.batch_runner --runs 60 --policy strict --mode attack --tool auto --variants comment css zwc reply multipage
+	$(PY) scripts/asr_compare.py
+
+.PHONY: dashboard
+dashboard:
+	$(PY) scripts/build_dashboard.py
+	@echo "Open file://$$(pwd)/data/dashboard/index.html"
+
+.PHONY: results-draft
+results-draft:
+	@echo "Draft at docs/results.md — update tables from dashboard."
