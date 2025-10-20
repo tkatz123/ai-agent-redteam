@@ -30,6 +30,11 @@ Modern AI assistants ingest untrusted content (web, docs, calendar). A single po
 make run-clean     # baseline: writes a log file
 make run-attack    # strict policy: placeholder run (defenses wired later)
 ```
+## Results (Defense v1)
+![ASR Compare](docs/fig/asr_compare.png)
+
+## Detector Quality
+![ROC (ML)](docs/fig/roc_ml.png)  ![PR (ML)](docs/fig/pr_ml.png)
 
 ## Architecture
 

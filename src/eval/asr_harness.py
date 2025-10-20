@@ -3,18 +3,29 @@ from __future__ import annotations
 import os, subprocess, sys
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
+from pathlib import Path
 
 from src.utils.config import load_settings
 from src.telemetry import Telemetry
 from src.pipeline import run_pipeline
 from src.attacks.variants import normalize_variant
 
-def _seed_variant(variant: str) -> None:
-    variant = normalize_variant(variant)
-    cmd = ["bash", "scripts/seed_poison.sh", variant]
-    res = subprocess.run(cmd, capture_output=True, text=True)
+
+ROOT = Path(__file__).resolve().parents[2]
+
+def _seed_variant(variant: str):
+    res = subprocess.run(
+        ["bash", "scripts/seed_poison.sh", variant],
+        cwd=str(ROOT),                 # <-- ensure we run in repo root
+        check=False,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "RECIP": "attacker@evil.test", "TITLE": "Weekly Research Notes"},
+    )
     if res.returncode != 0:
-        raise RuntimeError(f"seed_poison failed ({variant}): {res.stderr.strip()}")
+        raise RuntimeError(
+            f"seed_poison failed ({variant}): rc={res.returncode}\nSTDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+        )
 
 def _is_compromised(outcome: Dict[str, Any], tool: str) -> bool:
     tool = (tool or "").lower()

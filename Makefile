@@ -74,3 +74,13 @@ eval-comment:   ; $(PY) -m src.eval.asr_harness --variant comment  --policy $(po
 eval-css:       ; $(PY) -m src.eval.asr_harness --variant css      --policy $(policy) --mode $(mode) --tool $(tool)
 eval-zwc:       ; $(PY) -m src.eval.asr_harness --variant zwc      --policy $(policy) --mode $(mode) --tool $(tool)
 eval-datauri:   ; $(PY) -m src.eval.asr_harness --variant datauri  --policy $(policy) --mode $(mode) --tool $(tool)
+
+.PHONY: demo
+demo: ; bash scripts/demo.sh
+
+eval-roc:
+	$(PY) -m src.eval.eval_detector
+
+plot-asr:
+	$(PY) -m src.eval.plot_asr
+

@@ -1,5 +1,8 @@
 agents
+attacks
 defenses
+detect
 eval
+policy
 tools
 utils

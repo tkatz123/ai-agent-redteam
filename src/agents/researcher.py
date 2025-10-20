@@ -69,6 +69,7 @@ class Researcher(Agent):
             "has_comments": bool(c),
             "channels": present,
             "trust": (trust or {}),
+            "notes": notes,  # <-- crucial: log the aggregated notes text
         }
         self._tlog("research_notes", meta)
         return notes

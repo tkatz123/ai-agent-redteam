@@ -1,5 +1,5 @@
 # src/attacks/variants.py
-VARIANTS = ("clean", "comment", "css", "zwc", "datauri", "multipage", "reply")
+VARIANTS = ("clean", "comment", "css", "zwc", "datauri", "multipage", "reply", "evasion")
 
 def normalize_variant(v: str) -> str:
     v = (v or "").strip().lower()
