@@ -90,11 +90,35 @@ eval-5x300:
 	CONSENT_MODE=always $(PY) -m src.eval.batch_runner --runs 60 --policy strict --mode attack --tool auto --variants comment css zwc reply multipage
 	$(PY) scripts/asr_compare.py
 
-.PHONY: dashboard
+.PHONY: results-draft
+results-draft:
+	@echo "Draft at docs/results.md — update tables from dashboard."
+
+.PHONY: demo dashboard docker-build docker-demo docker-repro
+
+# demo.sh already respects $PYBIN; export PY as PYBIN for consistency
+demo: export PYBIN=$(PY)
+demo:
+	bash scripts/demo.sh
+
 dashboard:
 	$(PY) scripts/build_dashboard.py
 	@echo "Open file://$$(pwd)/data/dashboard/index.html"
 
-.PHONY: results-draft
-results-draft:
-	@echo "Draft at docs/results.md — update tables from dashboard."
+IMAGE ?= agent-redteam-demo:latest
+
+.PHONY: docker-build docker-demo
+
+docker-build:
+	docker build -t $(IMAGE) .
+
+# Run both demo and dashboard INSIDE the container, using system python.
+# We override the image CMD and do not invoke the host `dashboard` rule.
+docker-demo:
+	mkdir -p "$(CURDIR)/data"
+	docker run --rm -t \
+	  -v "$(CURDIR)/data:/app/data" \
+	  $(IMAGE) \
+	  bash -lc 'make demo PY=python && make dashboard PY=python && ls -la data/dashboard && echo "Dashboard ready at data/dashboard/index.html"'
+docker-repro: docker-build docker-demo
+	@echo "Open ./data/dashboard/index.html"

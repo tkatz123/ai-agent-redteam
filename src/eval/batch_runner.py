@@ -1,7 +1,7 @@
 # src/eval/batch_runner.py
 from __future__ import annotations
 import csv, os, time, random, re
-from typing import List, Dict, Any
+from typing import List
 from datetime import datetime, timezone
 
 from src.eval.asr_harness import run_once
@@ -20,7 +20,8 @@ def _normalize_variants(args_variants: List[str]) -> List[str]:
     for v in out:
         if v in VARIANTS and v not in seen:
             known.append(v); seen.add(v)
-    return known or ["comment", "css", "zwc"]
+    # If nothing valid was provided, fall back to a sensible default set (now includes collusion)
+    return known or ["comment", "css", "zwc", "datauri", "collusion"]
 
 def _with_retries(fn, tries: int = 3, base_delay: float = 0.25, backoff: float = 1.5):
     """Retry wrapper for transient failures."""
@@ -28,7 +29,7 @@ def _with_retries(fn, tries: int = 3, base_delay: float = 0.25, backoff: float =
     while True:
         try:
             return fn()
-        except Exception as e:
+        except Exception:
             t += 1
             if t >= tries:
                 raise
@@ -98,13 +99,16 @@ def run_batch(variants: List[str], runs: int = 20, policy: str = "normal",
 
 if __name__ == "__main__":
     import argparse
-    p = argparse.ArgumentParser()
+    p = argparse.ArgumentParser(
+        description="Batch ASR runner. Variants include: comment css zwc datauri multipage reply evasion collusion"
+    )
     p.add_argument("--runs", type=int, default=20)
     p.add_argument("--policy", choices=["normal","strict"], default="normal")
     p.add_argument("--mode", choices=["attack","clean"], default="attack")
+    # Keep your existing choices; pipeline maps 'schedule' internally as needed
     p.add_argument("--tool", choices=["auto","email","schedule"], default="auto")
-    # tolerant: space- or comma-separated
-    p.add_argument("--variants", nargs="+", default=["comment","css","zwc","datauri"])
+    # tolerant: space- or comma-separated; now default includes collusion
+    p.add_argument("--variants", nargs="+", default=["comment","css","zwc","datauri","collusion"])
     args = p.parse_args()
     args.variants = _normalize_variants(args.variants)
 
