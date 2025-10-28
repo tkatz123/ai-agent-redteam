@@ -20,7 +20,6 @@ def _normalize_variants(args_variants: List[str]) -> List[str]:
     for v in out:
         if v in VARIANTS and v not in seen:
             known.append(v); seen.add(v)
-    # If nothing valid was provided, fall back to a sensible default set (now includes collusion)
     return known or ["comment", "css", "zwc", "datauri", "collusion"]
 
 def _with_retries(fn, tries: int = 3, base_delay: float = 0.25, backoff: float = 1.5):
@@ -37,12 +36,17 @@ def _with_retries(fn, tries: int = 3, base_delay: float = 0.25, backoff: float =
 
 # ---- main ------------------------------------------------------------------
 
-def run_batch(variants: List[str], runs: int = 20, policy: str = "normal",
-              mode: str = "attack", tool: str = "auto") -> str:
+def run_batch(
+    variants: List[str],
+    runs: int = 20,
+    policy: str = "normal",
+    mode: str = "attack",
+    tool: str = "auto",
+    defense_profile: str | None = None,
+) -> str:
     """
     Runs N trials per variant and writes a CSV:
       ts, variant, policy, mode, tool, run_id, compromised, note
-    Notes: adds jitter, retries on transient failures, never crashes the batch.
     """
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out_dir = "data/logs"
@@ -55,7 +59,6 @@ def run_batch(variants: List[str], runs: int = 20, policy: str = "normal",
         w.writeheader()
         for v in variants:
             if v not in VARIANTS:
-                # Skip unknown variant gracefully
                 w.writerow({
                     "ts": ts, "variant": v, "policy": policy, "mode": mode,
                     "tool": "", "run_id": "", "compromised": 0,
@@ -63,14 +66,17 @@ def run_batch(variants: List[str], runs: int = 20, policy: str = "normal",
                 })
                 continue
 
-            for i in range(runs):
-                # small jitter so concurrent file ops don’t collide
-                time.sleep(random.uniform(0.02, 0.12))
+            for _i in range(runs):
+                time.sleep(random.uniform(0.02, 0.12))  # jitter
                 try:
-                    # Retry the whole run_once (it includes seeding + pipeline)
                     res = _with_retries(
-                        lambda: run_once(v, policy=policy, mode=mode,
-                                         force_tool=None if tool == "auto" else tool),
+                        lambda: run_once(
+                            v,
+                            policy=policy,
+                            mode=mode,
+                            force_tool=None if tool == "auto" else tool,
+                            defense_profile=defense_profile,
+                        ),
                         tries=3, base_delay=0.25, backoff=1.6
                     )
                     w.writerow({
@@ -84,7 +90,6 @@ def run_batch(variants: List[str], runs: int = 20, policy: str = "normal",
                         "note": ""
                     })
                 except Exception as e:
-                    # Don’t kill the batch; record as non-compromised with reason
                     w.writerow({
                         "ts": ts,
                         "variant": v,
@@ -105,12 +110,18 @@ if __name__ == "__main__":
     p.add_argument("--runs", type=int, default=20)
     p.add_argument("--policy", choices=["normal","strict"], default="normal")
     p.add_argument("--mode", choices=["attack","clean"], default="attack")
-    # Keep your existing choices; pipeline maps 'schedule' internally as needed
     p.add_argument("--tool", choices=["auto","email","schedule"], default="auto")
-    # tolerant: space- or comma-separated; now default includes collusion
     p.add_argument("--variants", nargs="+", default=["comment","css","zwc","datauri","collusion"])
+    p.add_argument("--defense_profile", default=None)
     args = p.parse_args()
     args.variants = _normalize_variants(args.variants)
 
-    path = run_batch(args.variants, runs=args.runs, policy=args.policy, mode=args.mode, tool=args.tool)
+    path = run_batch(
+        args.variants,
+        runs=args.runs,
+        policy=args.policy,
+        mode=args.mode,
+        tool=args.tool,
+        defense_profile=args.defense_profile,
+    )
     print(f"[OK] Wrote {path}")

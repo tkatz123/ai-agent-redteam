@@ -122,3 +122,7 @@ docker-demo:
 	  bash -lc 'make demo PY=python && make dashboard PY=python && ls -la data/dashboard && echo "Dashboard ready at data/dashboard/index.html"'
 docker-repro: docker-build docker-demo
 	@echo "Open ./data/dashboard/index.html"
+
+.PHONY: leaderboard
+leaderboard:
+	$(PY) scripts/leaderboard.py
