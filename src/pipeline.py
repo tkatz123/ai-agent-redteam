@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict, Any, Optional
 import re
 from types import SimpleNamespace
+import os
 
 from src.tools.webloader import load_page_follow_one
 from src.agents.researcher import Researcher
@@ -16,6 +17,10 @@ from src.utils.output_filter import filter_intent
 from src.policy.profiles import get_profile
 from src.detect.regex_detector import score as rx_score
 from src.utils.schema import validate_intent
+try:
+    from src.llm.openai_client import OpenAIClient  # provider=openai
+except Exception:
+    OpenAIClient = None
 
 # Optional import: ablations DefenseProfile (type only)
 try:
@@ -121,8 +126,26 @@ def run_pipeline(
     if getattr(prof, "sanitize_notes", False):
         notes = sanitize_text(notes)
 
+    llm = None
+    if os.getenv("USE_LLM", "0") == "1":
+        provider = os.getenv("LLM_PROVIDER", "openai").lower()
+        try:
+            if provider == "openai" and OpenAIClient is not None:
+                llm = OpenAIClient()
+                tel.log_step("llm_init", {
+                    "provider": "openai",
+                    "model": os.getenv("OPENAI_MODEL", "")
+                })
+            else:
+                tel.log_step("llm_init_error", {"provider": provider, "error": "unsupported_provider"})
+        except Exception as e:
+            tel.log_step("llm_init_error", {
+                "provider": provider,
+                "error": str(e)[:200]
+            })
+
     # 3) Summarizer → intent (allow override only if profile says so)
-    summarizer = Summarizer(tel)  # when you add a real LLM, pass llm=get_llm()
+    summarizer = Summarizer(tel, llm=llm)  # when you add a real LLM, pass llm=get_llm()
     intent = summarizer.propose_action(
         notes, trust=trust, allow_untrusted_override=getattr(prof, "allow_untrusted_override", False)
     )
@@ -158,6 +181,7 @@ def run_pipeline(
         if (rx_notes["score"] >= threshold) or (rx_body["score"] >= threshold):
             safe_intent = {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
             tel.log_step("detector_block", {"reason": "regex_threshold", "intent": safe_intent})
+            tel.log_step("pipeline_result", {"tool": tool, "success": True})
             return {"intent": intent, "outcome": {"blocked": True, "reason": "regex_threshold"}, "success": True}
 
     # Optional tool override for testing
@@ -171,6 +195,7 @@ def run_pipeline(
         ok_schema, why_schema = validate_intent(intent)
         if not ok_schema:
             tel.log_step("schema_block", {"tool": tool, "reason": why_schema})
+            tel.log_step("pipeline_result", {"tool": tool, "success": True})
             return {"intent": intent, "outcome": {"blocked": True, "reason": why_schema}, "success": True}
 
     # Allowlist enforcement (gateable by ablation)
@@ -179,6 +204,7 @@ def run_pipeline(
         if not allowed:
             safe_intent = {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
             tel.log_step("policy_block", {"tool": tool, "reason": reason, "intent": safe_intent})
+            tel.log_step("pipeline_result", {"tool": tool, "success": True})
             return {"intent": intent, "outcome": {"blocked": True, "reason": reason}, "success": True}
 
     # Consent gate (gateable by ablation)
@@ -187,6 +213,7 @@ def run_pipeline(
         if not ok:
             safe_intent = {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
             tel.log_step("consent_block", {"tool": tool, "reason": why, "intent": safe_intent})
+            tel.log_step("pipeline_result", {"tool": tool, "success": True})
             return {"intent": intent, "outcome": {"blocked": True, "reason": why}, "success": True}
 
     # 4) Route to the correct tool

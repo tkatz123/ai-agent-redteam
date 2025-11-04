@@ -6,6 +6,9 @@ from typing import Optional
 from src.utils.config import load_settings
 from src.telemetry import Telemetry
 from src.pipeline import run_pipeline
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Try to import ablation profiles if available
 try:

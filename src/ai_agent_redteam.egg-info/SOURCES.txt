@@ -17,6 +17,8 @@ src/eval/asr_harness.py
 src/eval/batch_runner.py
 src/eval/eval_detector.py
 src/eval/plot_asr.py
+src/llm/base.py
+src/llm/openai_client.py
 src/policy/ablations.py
 src/policy/allowlist.py
 src/policy/consent.py
@@ -25,6 +27,7 @@ src/policy/system_prompt.py
 src/tools/webloader.py
 src/utils/config.py
 src/utils/io.py
+src/utils/jsonsafe.py
 src/utils/output_filter.py
 src/utils/retry.py
 src/utils/sanitize.py
