@@ -116,7 +116,6 @@ data/logs/            # Run logs (JSONL) and evaluation results (CSV)
 
 ## Documentation
 
-- **[Overview](docs/overview.md)** — Detailed project brief with architecture and implementation details
 - **[Commands Reference](docs/commands.md)** — Complete list of available make commands and CLI options
 - **[Product Requirements](docs/product-requirements.md)** — Feature specifications and acceptance criteria
 - **[Project Plan](docs/project-plan.md)** — Development roadmap and milestones
