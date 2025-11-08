@@ -8,12 +8,14 @@ License-File: LICENSE
 Requires-Dist: beautifulsoup4
 Requires-Dist: pyyaml
 Requires-Dist: tqdm
-Requires-Dist: pyyaml
-Requires-Dist: python-dotenv
+Requires-Dist: python-dotenv>=1.0
 Requires-Dist: requests
 Requires-Dist: httpx>=0.27
 Requires-Dist: pydantic>=2.0
-Requires-Dist: python-dotenv>=1.0
+Requires-Dist: streamlit>=1.28.0
+Requires-Dist: pandas>=2.0.0
+Requires-Dist: altair>=5.0.0
+Requires-Dist: python-dateutil>=2.8.0
 Dynamic: license-file
 
 # ai-agent-redteam
