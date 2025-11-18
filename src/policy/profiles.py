@@ -29,7 +29,7 @@ PROFILES = {
         sanitize_body=True,
         output_filter=True,
         allowlist=True,
-        consent=True,
+        consent=False,  # Disabled for demo - regex detector and allowlist provide sufficient defense
         regex_detector=True,
         regex_threshold=4
     ),

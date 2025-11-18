@@ -122,9 +122,8 @@ def run_pipeline(
     # (If your strict Researcher structures notes, that happens inside Researcher; ablation flag is informational here.)
     notes = researcher.ingest(visible, comments, hidden, trust=trust)
 
-    # Ablation/Policy: sanitize researcher notes?
-    if getattr(prof, "sanitize_notes", False):
-        notes = sanitize_text(notes)
+    # Note: We keep notes raw here so the regex detector can see attack patterns
+    # Sanitization happens later, after detection
 
     llm = None
     if os.getenv("USE_LLM", "0") == "1":
@@ -153,21 +152,8 @@ def run_pipeline(
     # Infer tool if summarizer didn't set one
     intent.setdefault("tool", _infer_tool_from_notes(notes))
 
-    # Ablation/Policy: sanitize outgoing body?
-    if getattr(prof, "sanitize_body", False) and isinstance(intent.get("body"), str):
-        intent["body"] = sanitize_text(intent["body"])
-
-    # Ablation/Policy: output filtering (strip control phrases, ZW chars, redact secrets, etc.)
-    if getattr(prof, "output_filter", False):
-        filtered, flags = filter_intent(intent)
-        intent = filtered
-        tel.log_step("output_filter", {
-            "flags": flags,
-            "intent": {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
-        })
-
     # ---------------------------
-    # Step 3: Regex detector ONLY if enabled
+    # DEFENSE LAYER 1: Regex detector on RAW content (before sanitization)
     # ---------------------------
     if getattr(prof, "regex_detector", False):
         rx_notes = rx_score(notes)
@@ -181,8 +167,31 @@ def run_pipeline(
         if (rx_notes["score"] >= threshold) or (rx_body["score"] >= threshold):
             safe_intent = {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
             tel.log_step("detector_block", {"reason": "regex_threshold", "intent": safe_intent})
-            tel.log_step("pipeline_result", {"tool": tool, "success": True})
+            tel.log_step("pipeline_result", {"tool": intent.get("tool", "email"), "success": True})
             return {"intent": intent, "outcome": {"blocked": True, "reason": "regex_threshold"}, "success": True}
+
+    # ---------------------------
+    # DEFENSE LAYER 2: Sanitization (after detection, to clean remaining content)
+    # ---------------------------
+    # Note: We sanitize notes here too, even though it's after summarizer ran.
+    # This is for any secondary processing, but the key is regex detector saw raw notes first.
+    if getattr(prof, "sanitize_notes", False):
+        notes = sanitize_text(notes)
+
+    # Ablation/Policy: sanitize outgoing body?
+    if getattr(prof, "sanitize_body", False) and isinstance(intent.get("body"), str):
+        intent["body"] = sanitize_text(intent["body"])
+
+    # ---------------------------
+    # DEFENSE LAYER 3: Output filtering (strip control phrases, ZW chars, redact secrets)
+    # ---------------------------
+    if getattr(prof, "output_filter", False):
+        filtered, flags = filter_intent(intent)
+        intent = filtered
+        tel.log_step("output_filter", {
+            "flags": flags,
+            "intent": {k: (v if k != "body" else f"[{len(str(v))} chars]") for k, v in intent.items()}
+        })
 
     # Optional tool override for testing
     tool = (force_tool or "").strip().lower()
