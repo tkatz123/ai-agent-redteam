@@ -4,4 +4,4 @@ __pycache__/
 data/logs/
 .env
 .DS_Store
-/docs/overview.md
+poisoned_site/notes.md

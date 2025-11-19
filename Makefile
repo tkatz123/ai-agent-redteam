@@ -1,8 +1,20 @@
 PY := ./.venv/bin/python
 
-.PHONY: venv run-clean run-attack \
+.PHONY: install venv run-clean run-attack \
         poison-clean poison-comment poison-css poison-zwc poison-datauri poison-multipage \
         serve-poison attack-clean attack-comment attack-css attack-zwc attack-datauri attack-multipage
+
+# Install dependencies and setup environment
+install:
+	python3.11 -m venv .venv
+	./.venv/bin/pip install --upgrade pip
+	./.venv/bin/pip install -e .
+	mkdir -p data/logs data/dashboard
+	@echo "✅ Installation complete! Virtual environment created at .venv/"
+	@echo "📁 Created data/logs and data/dashboard directories"
+	@echo "Next steps:"
+	@echo "  1. (Optional) Copy .env.example to .env and add your OpenAI API key"
+	@echo "  2. Run 'make demo' to see a quick demonstration"
 
 .PHONY: eval-batch
 runs ?= 20

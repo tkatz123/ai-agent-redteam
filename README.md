@@ -18,17 +18,43 @@ Untrusted Web Content
                         └─> Tool Execution (Email or Calendar - mocked but logged)
 ```
 
+## Prerequisites
+
+Before you begin, ensure you have:
+- **Python 3.11 or higher** ([download here](https://www.python.org/downloads/))
+- **Git** for cloning the repository
+- **Make** (pre-installed on macOS/Linux; Windows users should use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install) or Git Bash)
+- **Bash** shell for running scripts
+
+**Optional:**
+- OpenAI API key for real LLM testing ([create one here](https://platform.openai.com/api-keys))
+- Docker for containerized deployment ([install here](https://docs.docker.com/get-docker/))
+
+**System Compatibility:**
+- Designed for macOS and Linux
+- Windows users: Use WSL (Windows Subsystem for Linux) for best compatibility
+
 ## Quick Start
 
 ### 1. Setup
 
 ```bash
-# Install dependencies
+# Clone the repository
+git clone https://github.com/tkatz123/ai-agent-redteam.git
+cd ai-agent-redteam
+
+# Install dependencies and create virtual environment
 make install
 
 # Copy environment template (optional - uses stub LLM by default)
 cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY if you want to use real LLMs
 ```
+
+**Note:** The `make install` command will:
+- Create a Python virtual environment at `.venv/`
+- Install all required dependencies
+- Create the `data/logs/` and `data/dashboard/` directories automatically
 
 ### 2. Run a Single Attack
 
@@ -55,6 +81,22 @@ CONSENT_MODE=always make eval-batch policy=strict mode=attack runs=30 variants="
 # Run the demo (shows ASR comparison table)
 make demo
 ```
+
+### 4. Interactive Dashboard (Optional)
+
+For a visual interface to run attacks and analyze results in real-time:
+
+```bash
+streamlit run streamlit_app/app.py
+```
+
+The dashboard will open in your browser at `http://localhost:8501` and provides:
+- Point-and-click attack execution
+- Real-time defense timing analysis
+- ASR visualization with interactive charts
+- Make command integration for batch evaluations
+
+See [streamlit_app/README_STREAMLIT.md](streamlit_app/README_STREAMLIT.md) for detailed usage instructions.
 
 ## Attack Variants
 
@@ -96,6 +138,43 @@ By default, the system uses a deterministic stub. To use OpenAI models:
    ```
 
 2. Run as normal - the system will call the real LLM for summarization
+
+## Docker Deployment (Optional)
+
+For reproducible execution in an isolated environment:
+
+### Build and Run with Docker
+
+```bash
+# Build the Docker image
+make docker-build
+
+# Run demo and generate dashboard inside container
+make docker-demo
+
+# One-step build + run (recommended for clean reproductions)
+make docker-repro
+```
+
+The `docker-repro` command will:
+1. Build the Docker image (`agent-redteam-demo:latest`)
+2. Run the demo with strict defenses enabled
+3. Generate a static HTML dashboard
+4. Mount the `./data/` directory so results persist on your host
+
+After completion, open `./data/dashboard/index.html` in your browser to view results.
+
+### Customizing the Docker Image
+
+You can customize the image name:
+
+```bash
+# Use a custom image name
+make docker-build IMAGE=my-custom-name:v1.0
+make docker-demo IMAGE=my-custom-name:v1.0
+```
+
+**Note:** Docker deployment uses the system Python inside the container, not your local virtual environment.
 
 ## Project Structure
 
@@ -156,7 +235,7 @@ Do not use this project to attack real systems or services.
 
 ## License
 
-MIT Liscense
+MIT License
 
 ## Author
 

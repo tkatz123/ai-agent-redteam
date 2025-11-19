@@ -45,12 +45,11 @@ The dashboard will open in your default web browser at `http://localhost:8501`.
 
 ### Attack Controls (Left Sidebar)
 
-1. **Attack Variant**: Select from 9 attack types:
+1. **Attack Variant**: Select from 8 attack types:
    - `clean` - No attack (baseline benign content)
    - `comment` - HTML comment injection
    - `css` - CSS-hidden text injection
    - `zwc` - Zero-width character obfuscation
-   - `datauri` - Data URI injection
    - `multipage` - Multi-page attack
    - `reply` - Conditional trigger (reply-chain)
    - `evasion` - Evasion techniques

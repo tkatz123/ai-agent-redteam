@@ -26,7 +26,7 @@ st.set_page_config(
 
 # Constants
 ATTACK_VARIANTS = [
-    "clean", "comment", "css", "zwc", "datauri",
+    "clean", "comment", "css", "zwc",
     "multipage", "reply", "evasion", "collusion"
 ]
 
